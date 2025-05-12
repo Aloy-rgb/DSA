@@ -1,0 +1,293 @@
+from tkinter import *
+from tkinter import messagebox # Import messagebox for displaying success/error messages
+import sqlite3
+
+root = Tk()
+root.title("Python: Simple Login/Register Application") # Updated title
+width = 400
+height = 320 # Increased height slightly for the new button
+screen_width = root.winfo_screenwidth()
+screen_height = root.winfo_screenheight()
+x = (screen_width/2) - (width/2)
+y = (screen_height/2) - (height/2)
+root.geometry("%dx%d+%d+%d" % (width, height, x, y))
+root.resizable(0, 0)
+
+#==============================VARIABLES======================================
+USERNAME = StringVar()
+PASSWORD = StringVar()
+# Variables for Registration Window
+REG_USERNAME = StringVar()
+REG_PASSWORD = StringVar()
+REG_CONFIRM_PASSWORD = StringVar()
+
+
+#==============================FRAMES=========================================
+Top = Frame(root, bd=2,  relief=RIDGE)
+Top.pack(side=TOP, fill=X)
+Form = Frame(root, height=200)
+Form.pack(side=TOP, pady=20)
+ButtonFrame = Frame(root) # Frame for buttons
+ButtonFrame.pack(side=TOP, pady=10)
+
+#==============================LABELS=========================================
+lbl_title = Label(Top, text = "Python: Simple Login/Register Application", font=('arial', 15)) # Updated title
+lbl_title.pack(fill=X)
+lbl_username = Label(Form, text = "Username:", font=('arial', 14), bd=15)
+lbl_username.grid(row=0, sticky="e")
+lbl_password = Label(Form, text = "Password:", font=('arial', 14), bd=15)
+lbl_password.grid(row=1, sticky="e")
+lbl_text = Label(Form)
+lbl_text.grid(row=2, columnspan=2)
+
+#==============================ENTRY WIDGETS==================================
+username = Entry(Form, textvariable=USERNAME, font=(14))
+username.grid(row=0, column=1)
+password = Entry(Form, textvariable=PASSWORD, show="*", font=(14))
+password.grid(row=1, column=1)
+
+
+#==============================DATABASE SETUP=================================
+# It's better to ensure the database and table exist once at the start
+def InitializeDatabase():
+    conn = None
+    cursor = None
+    try:
+        conn = sqlite3.connect("pythontut.db")
+        cursor = conn.cursor()
+        cursor.execute("CREATE TABLE IF NOT EXISTS `member` (mem_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password TEXT)") # Added UNIQUE constraint to username
+        # Check if admin user exists, add if not
+        cursor.execute("SELECT * FROM `member` WHERE `username` = 'admin'")
+        if cursor.fetchone() is None:
+            cursor.execute("INSERT INTO `member` (username, password) VALUES('admin', 'admin')")
+            conn.commit()
+            print("Admin user created.")
+        else:
+            print("Admin user already exists.")
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        messagebox.showerror("Database Error", f"Failed to initialize database: {e}")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+        print("Database Initialized.")
+
+# Call initialization once
+InitializeDatabase()
+
+
+#==============================METHODS========================================
+
+def Login(event=None):
+    conn = None
+    cursor = None
+    # Clear previous messages
+    lbl_text.config(text="")
+
+    if USERNAME.get() == "" or PASSWORD.get() == "":
+        lbl_text.config(text="Please complete the required field!", fg="red")
+    else:
+        try:
+            conn = sqlite3.connect("pythontut.db")
+            cursor = conn.cursor()
+            # Use placeholders to prevent SQL injection
+            cursor.execute("SELECT * FROM `member` WHERE `username` = ? AND `password` = ?", (USERNAME.get(), PASSWORD.get()))
+            if cursor.fetchone() is not None:
+                HomeWindow()
+                USERNAME.set("")
+                PASSWORD.set("")
+                lbl_text.config(text="")
+            else:
+                lbl_text.config(text="Invalid username or password", fg="red")
+                USERNAME.set("")
+                PASSWORD.set("")
+        except sqlite3.Error as e:
+            print(f"Database error during login: {e}")
+            lbl_text.config(text="Database error during login.", fg="red")
+            messagebox.showerror("Login Error", f"Database error: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
+
+def OpenRegisterWindow():
+    # Hide login window
+    root.withdraw()
+
+    # Create Register Window
+    global RegisterWindow # Make it global to access it later if needed
+    RegisterWindow = Toplevel()
+    RegisterWindow.title("Register New Account")
+    width_reg = 400
+    height_reg = 350 # Adjusted height for confirm password
+    screen_width_reg = RegisterWindow.winfo_screenwidth()
+    screen_height_reg = RegisterWindow.winfo_screenheight()
+    x_reg = (screen_width_reg/2) - (width_reg/2)
+    y_reg = (screen_height_reg/2) - (height_reg/2)
+    RegisterWindow.geometry("%dx%d+%d+%d" % (width_reg, height_reg, x_reg, y_reg))
+    RegisterWindow.resizable(0, 0)
+
+    # Make sure closing register window brings back login window
+    RegisterWindow.protocol("WM_DELETE_WINDOW", CancelRegister)
+
+    # Frame for registration form elements
+    RegForm = Frame(RegisterWindow, height=250)
+    RegForm.pack(side=TOP, pady=20)
+
+    # Labels for registration
+    lbl_reg_title = Label(RegForm, text="Registration Form", font=('arial', 18))
+    lbl_reg_title.grid(row=0, columnspan=2, pady=10)
+    lbl_reg_username = Label(RegForm, text="Username:", font=('arial', 14), bd=15)
+    lbl_reg_username.grid(row=1, sticky="e")
+    lbl_reg_password = Label(RegForm, text="Password:", font=('arial', 14), bd=15)
+    lbl_reg_password.grid(row=2, sticky="e")
+    lbl_reg_confirm = Label(RegForm, text="Confirm Pwd:", font=('arial', 14), bd=15)
+    lbl_reg_confirm.grid(row=3, sticky="e")
+
+    # Entry widgets for registration
+    reg_username_entry = Entry(RegForm, textvariable=REG_USERNAME, font=(14))
+    reg_username_entry.grid(row=1, column=1)
+    reg_password_entry = Entry(RegForm, textvariable=REG_PASSWORD, show="*", font=(14))
+    reg_password_entry.grid(row=2, column=1)
+    reg_confirm_entry = Entry(RegForm, textvariable=REG_CONFIRM_PASSWORD, show="*", font=(14))
+    reg_confirm_entry.grid(row=3, column=1)
+
+    # Registration status label
+    global lbl_reg_status # Make global to update from RegisterUser function
+    lbl_reg_status = Label(RegForm, text="", font=('arial', 12))
+    lbl_reg_status.grid(row=4, columnspan=2, pady=10)
+
+    # Buttons for registration window
+    btn_register_user = Button(RegForm, text="Register", width=15, command=RegisterUser)
+    btn_register_user.grid(row=5, column=1, pady=10, sticky="w")
+    btn_cancel_reg = Button(RegForm, text="Cancel", width=15, command=CancelRegister)
+    btn_cancel_reg.grid(row=5, column=0, pady=10, sticky="e", padx=5)
+
+
+def RegisterUser():
+    conn = None
+    cursor = None
+    username = REG_USERNAME.get()
+    password = REG_PASSWORD.get()
+    confirm = REG_CONFIRM_PASSWORD.get()
+
+    # Clear previous status messages
+    lbl_reg_status.config(text="")
+
+    # --- Input Validation ---
+    if not username or not password or not confirm:
+        lbl_reg_status.config(text="All fields are required!", fg="orange")
+        return
+
+    if password != confirm:
+        lbl_reg_status.config(text="Passwords do not match!", fg="red")
+        # Clear password fields
+        REG_PASSWORD.set("")
+        REG_CONFIRM_PASSWORD.set("")
+        return
+
+    if len(password) < 4: # Basic password length check
+         lbl_reg_status.config(text="Password must be at least 4 characters", fg="orange")
+         return
+
+    # --- Database Interaction ---
+    try:
+        conn = sqlite3.connect("pythontut.db")
+        cursor = conn.cursor()
+
+        # Check if username already exists (case-insensitive check often preferred)
+        # cursor.execute("SELECT * FROM `member` WHERE LOWER(`username`) = LOWER(?)", (username,))
+        # Sticking to case-sensitive as per original logic for simplicity now:
+        cursor.execute("SELECT * FROM `member` WHERE `username` = ?", (username,))
+        if cursor.fetchone() is not None:
+            lbl_reg_status.config(text="Username already taken!", fg="red")
+            REG_USERNAME.set("") # Clear username field
+        else:
+            # Insert new user
+            cursor.execute("INSERT INTO `member` (username, password) VALUES(?, ?)", (username, password))
+            conn.commit()
+            lbl_reg_status.config(text="Registration Successful!", fg="green")
+            # Clear registration fields after success
+            REG_USERNAME.set("")
+            REG_PASSWORD.set("")
+            REG_CONFIRM_PASSWORD.set("")
+            # Optionally close registration window and show login after success
+            messagebox.showinfo("Success", "Registration Successful! You can now log in.")
+            CancelRegister() # Close registration window and show login window
+
+    except sqlite3.IntegrityError:
+        # This handles the UNIQUE constraint violation, though the check above should prevent it
+        lbl_reg_status.config(text="Username already taken (DB constraint)!", fg="red")
+        REG_USERNAME.set("")
+    except sqlite3.Error as e:
+        print(f"Database error during registration: {e}")
+        lbl_reg_status.config(text="Database error during registration.", fg="red")
+        messagebox.showerror("Registration Error", f"Database error: {e}")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+
+def CancelRegister():
+    # Destroy register window and show login window again
+    if 'RegisterWindow' in globals() and RegisterWindow.winfo_exists():
+         RegisterWindow.destroy()
+    root.deiconify() # Show the main login window again
+    # Clear registration form variables
+    REG_USERNAME.set("")
+    REG_PASSWORD.set("")
+    REG_CONFIRM_PASSWORD.set("")
+
+
+def HomeWindow():
+    global Home
+    root.withdraw() # Hide login window
+    Home = Toplevel()
+    Home.title("Welcome") # Simpler title
+    width = 600
+    height = 500
+    screen_width = Home.winfo_screenwidth()
+    screen_height = Home.winfo_screenheight()
+    x = (screen_width/2) - (width/2)
+    y = (screen_height/2) - (height/2)
+    Home.geometry("%dx%d+%d+%d" % (width, height, x, y))
+    Home.resizable(0, 0)
+    Home.protocol("WM_DELETE_WINDOW", Back) # Handle closing home window
+
+    lbl_home = Label(Home, text="Successfully Logged In!", font=('times new roman', 20)).pack(pady=30)
+    # Add some more content maybe?
+    Label(Home, text=f"Welcome, {USERNAME.get()}!", font=('arial', 14)).pack(pady=10)
+
+    btn_back = Button(Home, text='Logout', command=Back, width=20) # Changed text to Logout
+    btn_back.pack(pady=20)
+
+def Back():
+    # Destroy home window and show login window again
+    if 'Home' in globals() and Home.winfo_exists():
+        Home.destroy()
+    root.deiconify() # Show the main login window again
+    # Clear login fields when logging out
+    USERNAME.set("")
+    PASSWORD.set("")
+
+
+#==============================BUTTON WIDGETS=================================
+# Placed buttons in ButtonFrame for better organization
+
+btn_login = Button(ButtonFrame, text="Login", width=20, command=Login)
+btn_login.grid(row=0, column=0, padx=10, pady=10) # Use grid layout
+btn_login.bind('<Return>', Login) # Bind Enter key to Login
+
+# --- ADDED REGISTER BUTTON ---
+btn_register_open = Button(ButtonFrame, text="Register", width=20, command=OpenRegisterWindow)
+btn_register_open.grid(row=0, column=1, padx=10, pady=10) # Place next to Login
+
+
+#==============================INITIALIZATION=================================
+if __name__ == '__main__':
+    root.mainloop()
