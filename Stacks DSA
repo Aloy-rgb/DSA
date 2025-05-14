@@ -1,0 +1,45 @@
+class Stack:
+    def __init__(self):
+        self.stack = []
+
+#push
+    def push(self, element):
+        self.stack.append(element)
+#peek
+    def peek(self):
+        if self.isEmpty():
+            return "Stack is empty"
+        return self.stack[-1]
+#pop
+    def pop(self):
+        if self.isEmpty():
+            return "Stack is empty"
+        return self.stack.pop()
+
+#Empty
+    def isEmpty(self):
+        return len(self.stack) == 0
+
+#Size
+    def size(self):
+        return len(self.stack)
+#Make a stack
+myStack1 = Stack()
+myStack = int(input("Enter the number of elements you want to push to the stack:"))
+            
+for i in range(myStack):
+    myStack1.push(input(f"Element{i+1}: "))
+    print(f"pushed", myStack1.stack, "to stack")
+
+
+print("Stack: ", myStack1.stack)
+
+print("Peek", myStack1.peek(), "from stack")
+
+
+print("Popped", myStack1.pop(), "from stack")
+
+
+print("Empty: ", myStack1.isEmpty())
+print("Size:", myStack1.size())
+print("Stack:", myStack1.stack)
